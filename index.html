@@ -1946,6 +1946,7 @@ window.COURSE = {
     labs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>',
     tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>',
     codes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+    syntax: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13 7l-2 10"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></svg>',
     pc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'
   };
@@ -1955,7 +1956,7 @@ window.COURSE = {
       '<header id="top"><div class="brand"><span class="dot"></span><span>' + esc(C.title) + '</span></div>' +
       '<div class="prog"><span id="pp"></span><div class="bar"><i id="pb"></i></div></div></header>' +
       '<main id="main"></main><nav id="nav"></nav>';
-    var nav = [['path', 'Path'], ['cards', 'Cards'], ['labs', 'Labs'], ['tools', 'Tools'], ['codes', 'Save']];
+    var nav = [['path', 'Path'], ['cards', 'Cards'], ['labs', 'Labs'], ['tools', 'Tools'], ['syntax', 'Syntax'], ['codes', 'Save']];
     if (!(C.tools && C.tools.length)) nav = nav.filter(function (n) { return n[0] !== 'tools'; });
     $('#nav').innerHTML = nav.map(function (n) { return '<button data-go="#' + n[0] + '" data-nav="' + n[0] + '">' + ICON[n[0]] + '<span>' + n[1] + '</span></button>'; }).join('');
     applyDevice();
@@ -2003,7 +2004,7 @@ window.COURSE = {
     var main = $('#main'); main.innerHTML = '';
     document.querySelectorAll('#nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.nav === parts[0] || (parts[0] === 'stage' && b.dataset.nav === 'path') || (parts[0] === 'lab' && b.dataset.nav === 'labs')); });
     topbar();
-    var R = { path: vPath, stage: vStage, lab: vLab, cards: vCards, labs: vLabs, tools: vTools, tool: vTool, codes: vCodes };
+    var R = { path: vPath, stage: vStage, lab: vLab, cards: vCards, labs: vLabs, tools: vTools, tool: vTool, syntax: vSyntax, codes: vCodes };
     (R[parts[0]] || vPath)(main, parts.slice(1));
     window.scrollTo(0, 0);
   }
@@ -2346,6 +2347,163 @@ window.COURSE = {
     if (!t) return vTools(m);
     m.innerHTML = '<div class="row" style="margin-bottom:8px"><button class="btn sm ghost" data-go="#tools">← Tools</button></div><h1>' + esc(t.title) + '</h1><div id="tool"></div>';
     t.render($('#tool', m), { esc: esc, shuffle: shuffle, toast: toast, gens: C.gens, renderQ: renderQ, wire: wire, prep: prep, setCleanup: function (f) { cleanup = f; } });
+  }
+
+  // ---------- SYNTAX (tool command reference) ----------
+  var SYN = [
+    { cat: 'Password & hash cracking', tools: [
+      { name: 'John the Ripper', blurb: 'Cracks password hashes with wordlists or rules. Auto-detects many formats.', cmds: [
+        { c: 'john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt' },
+        { c: 'john --format=raw-md5 --wordlist=rockyou.txt hash.txt', n: 'Set the format when John guesses wrong.' },
+        { c: 'john --show hash.txt', n: 'Show cracked passwords after a run.' },
+        { c: 'unshadow /etc/passwd /etc/shadow > unshadowed.txt', n: 'Combine passwd + shadow before cracking Linux logins.' },
+        { c: 'zip2john secret.zip > zip.hash', n: 'Also ssh2john, rar2john, office2john to extract a crackable hash.' }
+      ] },
+      { name: 'Hashcat', blurb: 'GPU-accelerated cracker. The -m flag picks the hash mode.', cmds: [
+        { c: 'hashcat -m 0 -a 0 hash.txt rockyou.txt', n: '-m 0 = MD5, -a 0 = straight wordlist.' },
+        { c: 'hashcat -m 1000 ntlm.txt rockyou.txt', n: '-m 1000 = NTLM (Windows).' },
+        { c: 'hashcat -m 22000 wpa.hc22000 rockyou.txt', n: 'WPA / WPA2 handshakes.' },
+        { c: 'hashcat --show -m 0 hash.txt', n: 'Reprint already-cracked hashes.' }
+      ] },
+      { name: 'hashid', blurb: 'Identifies the likely algorithm of a hash so you pick the right mode.', cmds: [
+        { c: 'hashid 482c811da5d5b4bc6d497ffa98491e38' },
+        { c: 'hashid -m 5f4dcc3b5aa765d61d8327deb882cf99', n: '-m also prints the matching hashcat mode.' }
+      ] }
+    ] },
+    { cat: 'Recon & scanning', tools: [
+      { name: 'Nmap', blurb: 'Port scanner and service / version detector. The workhorse of recon.', cmds: [
+        { c: 'nmap -sC -sV -oN nmap.txt 10.10.10.10', n: 'Default scripts + versions, saved to a file.' },
+        { c: 'nmap -p- --min-rate 1000 10.10.10.10', n: 'All 65535 TCP ports, faster.' },
+        { c: 'nmap -sU --top-ports 50 10.10.10.10', n: 'Top UDP ports.' },
+        { c: 'nmap --script vuln 10.10.10.10', n: 'Run the vuln NSE scripts.' }
+      ] },
+      { name: 'subfinder', blurb: 'Passive subdomain enumeration for a root domain.', cmds: [
+        { c: 'subfinder -d example.com -o subs.txt' }
+      ] },
+      { name: 'httpx', blurb: 'Probes a list of hosts for live HTTP services and metadata.', cmds: [
+        { c: 'cat subs.txt | httpx -title -status-code -tech-detect' }
+      ] },
+      { name: 'whatweb', blurb: 'Fingerprints the tech stack behind a web page.', cmds: [
+        { c: 'whatweb https://example.com' }
+      ] }
+    ] },
+    { cat: 'Content & directory discovery', tools: [
+      { name: 'ffuf', blurb: 'Fast fuzzer for directories, files, parameters and vhosts. FUZZ marks the spot.', cmds: [
+        { c: 'ffuf -u https://target/FUZZ -w /usr/share/wordlists/dirb/common.txt -mc 200,204,301,302,401' },
+        { c: 'ffuf -u https://target -H "Host: FUZZ.target" -w subdomains.txt -fs 0', n: 'Virtual-host discovery; -fs filters a baseline size.' },
+        { c: 'ffuf -u "https://target/page?FUZZ=1" -w params.txt', n: 'Parameter-name fuzzing.' }
+      ] },
+      { name: 'gobuster', blurb: 'Directory, DNS and vhost brute-forcing.', cmds: [
+        { c: 'gobuster dir -u https://target -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x php,txt' },
+        { c: 'gobuster dns -d example.com -w subdomains.txt' }
+      ] },
+      { name: 'feroxbuster', blurb: 'Recursive content discovery that follows directories it finds.', cmds: [
+        { c: 'feroxbuster -u https://target -w wordlist.txt' }
+      ] }
+    ] },
+    { cat: 'Web vulnerability scanning', tools: [
+      { name: 'Nuclei', blurb: 'Template-driven scanner for known CVEs and misconfigurations.', cmds: [
+        { c: 'nuclei -u https://target' },
+        { c: 'nuclei -l urls.txt -t cves/ -severity high,critical' }
+      ] },
+      { name: 'sqlmap', blurb: 'Automated SQL injection detection and exploitation. Use a saved request for complex apps.', cmds: [
+        { c: 'sqlmap -u "https://target/item?id=1" --batch --dbs' },
+        { c: 'sqlmap -r request.txt --batch --dump', n: 'Feed a raw request saved from Burp.' },
+        { c: 'sqlmap -u "https://target/item?id=1" --level 5 --risk 3', n: 'Dig deeper when the quick scan finds nothing.' }
+      ] },
+      { name: 'Nikto', blurb: 'Quick web-server scanner for common issues and exposed files.', cmds: [
+        { c: 'nikto -h https://target' }
+      ] },
+      { name: 'WPScan', blurb: 'WordPress-focused scanner for users, plugins and themes.', cmds: [
+        { c: 'wpscan --url https://target --enumerate u,vp,vt' },
+        { c: 'wpscan --url https://target --passwords rockyou.txt --usernames admin' }
+      ] }
+    ] },
+    { cat: 'Manual HTTP & proxies', tools: [
+      { name: 'curl', blurb: 'Craft raw HTTP requests by hand. Essential for API and auth testing.', cmds: [
+        { c: 'curl -i https://target', n: '-i shows response headers.' },
+        { c: 'curl -s -X POST -d "user=admin&pass=x" https://target/login' },
+        { c: 'curl -H "Authorization: Bearer TOKEN" https://target/api' },
+        { c: 'curl -b "session=abc123" https://target/dashboard', n: '-b sends cookies.' }
+      ] },
+      { name: 'Burp Suite / Caido', blurb: 'Intercepting proxies (GUI). Capture a request, then replay and tamper it.', cmds: [
+        { c: 'Intercept a request, then send to Repeater (Ctrl+R)', n: 'Repeater edits and resends one request; Intruder automates payloads.' }
+      ] }
+    ] },
+    { cat: 'Shells, listeners & transfer', tools: [
+      { name: 'netcat (nc)', blurb: 'Swiss-army TCP tool for listeners, reverse shells and file transfer. Labs/authorized only.', cmds: [
+        { c: 'nc -lvnp 4444', n: 'Listener for a reverse shell on port 4444.' },
+        { c: 'nc 10.10.10.10 4444', n: 'Connect out to a host / port.' },
+        { c: 'nc -lvnp 4444 > out.bin', n: 'Receive a file over the listener.' }
+      ] },
+      { name: 'Python HTTP server', blurb: 'Serve files from the current folder for quick transfers.', cmds: [
+        { c: 'python3 -m http.server 8000' }
+      ] },
+      { name: 'ssh / scp', blurb: 'Remote shell and secure copy.', cmds: [
+        { c: 'ssh user@10.10.10.10' },
+        { c: 'scp file.txt user@10.10.10.10:/tmp/', n: 'Copy a file to the remote host.' }
+      ] }
+    ] },
+    { cat: 'Online password guessing', tools: [
+      { name: 'hydra', blurb: 'Brute-forces login services (SSH, FTP, HTTP forms). Loud — authorized targets only.', cmds: [
+        { c: 'hydra -l admin -P rockyou.txt ssh://10.10.10.10' },
+        { c: 'hydra -l admin -P rockyou.txt 10.10.10.10 http-post-form "/login:user=^USER^&pass=^PASS^:F=incorrect"', n: 'F= marks the failed-login text.' }
+      ] }
+    ] },
+    { cat: 'Encoding, crypto & files', tools: [
+      { name: 'base64', blurb: 'Decode or encode base64 on the command line.', cmds: [
+        { c: 'echo cGFzcw== | base64 -d' },
+        { c: 'echo -n secret | base64' }
+      ] },
+      { name: 'CyberChef', blurb: 'Browser tool for chained decode / encode / crypto operations (GUI).', cmds: [
+        { c: 'Drag ops like From Base64, Magic, XOR Brute Force onto the recipe', n: 'Magic auto-detects many encodings.' }
+      ] },
+      { name: 'exiftool / steghide / binwalk', blurb: 'Pull hidden data from files during CTF-style challenges.', cmds: [
+        { c: 'exiftool image.jpg', n: 'Read file metadata.' },
+        { c: 'steghide extract -sf image.jpg', n: 'Extract data hidden in an image.' },
+        { c: 'binwalk -e firmware.bin', n: 'Carve embedded files out of a blob.' }
+      ] }
+    ] },
+    { cat: 'Wordlists & resources', tools: [
+      { name: 'Common paths', blurb: 'Where the go-to wordlists live on Kali / Parrot.', cmds: [
+        { c: '/usr/share/wordlists/rockyou.txt', n: 'The classic password list (gunzip it first on Kali).' },
+        { c: '/usr/share/seclists/', n: 'SecLists: discovery, passwords, payloads. Install with sudo apt install seclists.' }
+      ] }
+    ] }
+  ];
+  function vSyntax(m) {
+    function draw(q) {
+      q = (q || '').toLowerCase();
+      var html = SYN.map(function (cat) {
+        var tools = cat.tools.filter(function (t) {
+          if (!q) return true;
+          if ((t.name + ' ' + t.blurb).toLowerCase().indexOf(q) >= 0) return true;
+          return t.cmds.some(function (c) { return c.c.toLowerCase().indexOf(q) >= 0 || (c.n || '').toLowerCase().indexOf(q) >= 0; });
+        });
+        if (!tools.length) return '';
+        return '<div class="tag" style="margin:18px 0 8px">' + esc(cat.cat) + '</div>' +
+          tools.map(function (t) {
+            return '<div class="panel" style="margin-bottom:10px"><b>' + esc(t.name) + '</b>' +
+              '<div class="muted small" style="margin:2px 0 8px">' + esc(t.blurb) + '</div>' +
+              t.cmds.map(function (c) {
+                return '<div style="display:flex;align-items:center;gap:8px;margin:6px 0">' +
+                  '<span class="mono" style="flex:1;min-width:0;word-break:break-all;color:var(--acc)">' + esc(c.c) + '</span>' +
+                  '<button class="btn sm ghost" data-cp="' + esc(c.c) + '">Copy</button></div>' +
+                  (c.n ? '<div class="muted small" style="margin:-2px 0 8px">' + esc(c.n) + '</div>' : '');
+              }).join('');
+          }).join('') + '</div>';
+      }).join('');
+      $('#synlist', m).innerHTML = html || '<p class="muted">No tools match that search.</p>';
+      m.querySelectorAll('[data-cp]').forEach(function (b) { b.onclick = function () { copy(b.dataset.cp); }; });
+    }
+    m.innerHTML = '<h1>Tool syntax</h1>' +
+      '<p class="muted">Quick command reference for common offensive-security tools. Tap Copy, then paste into your own terminal.</p>' +
+      '<div class="panel" style="border-color:var(--acc2);margin-bottom:12px"><b>Authorized use only</b>' +
+      '<div class="muted small" style="margin-top:4px">Run these only against systems you own or are explicitly in scope to test — your own labs, CTFs like TryHackMe or Hack The Box, or a bug bounty target that lists the asset. Unauthorized use is illegal.</div></div>' +
+      '<input class="answer-in" id="synq" placeholder="Filter tools or commands (e.g. john, nmap, sqlmap)" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">' +
+      '<div id="synlist" style="margin-top:12px"></div>';
+    $('#synq', m).addEventListener('input', function () { draw(this.value); });
+    draw('');
   }
 
   // ---------- SAVE / CODES ----------
